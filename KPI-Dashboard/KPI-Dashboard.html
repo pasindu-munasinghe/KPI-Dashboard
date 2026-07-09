@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apex KPI · Channel Performance Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+
+:root{
+  --blue:#2F6FED; --blue-d:#1e4fc4; --green:#16A34A; --purple:#7C5CFC; --red:#EF4444; --amber:#F59E0B;
+  --bg:#EEF1F8; --bg2:#F7F9FD; --card:rgba(255,255,255,0.72); --card-solid:#ffffff; --border:rgba(15,23,42,0.08);
+  --text:#0F172A; --sub:#5B6478; --shadow:0 10px 30px -12px rgba(31,45,90,0.18);
+  --mono:'SF Mono','JetBrains Mono',Consolas,'Courier New',monospace;
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --display:'Outfit','Inter',sans-serif;
+}
+html[data-theme="dark"]{
+  --bg:#0A0E1A; --bg2:#0F1424; --card:rgba(22,28,48,0.65); --card-solid:#141a2e; --border:rgba(255,255,255,0.08);
+  --text:#EAF0FF; --sub:#8A93AC; --shadow:0 10px 34px -10px rgba(0,0,0,0.55);
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:var(--sans);background:
+  radial-gradient(1100px 500px at 8% -8%, rgba(47,111,237,0.14), transparent 60%),
+  radial-gradient(900px 500px at 96% 0%, rgba(124,92,252,0.12), transparent 55%),
+  var(--bg); color:var(--text); transition:background .35s ease,color .35s ease; min-height:100vh;}
+::-webkit-scrollbar{width:8px;height:8px;} 
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;transition:background 0.2s;}
+::-webkit-scrollbar-thumb:hover{background:rgba(47,111,237,0.25);}
+
+.wrap{max-width:1500px;margin:0 auto;padding:24px 30px 60px;}
+.wrap.dash-wrap{max-width:80vw;transition:max-width 0.3s;}
+@media(max-width:900px){.wrap.dash-wrap{max-width:100vw;}}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap;}
+.brand{display:flex;align-items:center;gap:14px;}
+.brand .mark{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--blue),var(--purple));
+  display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;font-size:17px;box-shadow:0 6px 20px -5px rgba(47,111,237,0.45);
+  transition:transform 0.3s ease;}
+.brand:hover .mark{transform:scale(1.06) rotate(5deg);}
+.brand h1{font-family:var(--display);font-size:21px;font-weight:800;margin:0;letter-spacing:-0.5px;}
+.brand span{display:block;font-size:10.5px;color:var(--sub);font-weight:700;letter-spacing:.5px;text-transform:uppercase;}
+.top-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.icon-btn,.pill-btn{border:1px solid var(--border);background:var(--card);backdrop-filter:blur(16px);
+  color:var(--text);border-radius:12px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;
+  display:flex;align-items:center;gap:7px;transition:transform .15s ease, box-shadow .15s ease, background-color .15s ease;}
+.icon-btn:hover,.pill-btn:hover{transform:translateY(-1px);box-shadow:var(--shadow);background:var(--card-solid);}
+.icon-btn:active,.pill-btn:active{transform:translateY(1px) scale(0.97);}
+
+.theme-toggle{width:52px;height:30px;border-radius:20px;border:1px solid var(--border);background:var(--card);
+  position:relative;cursor:pointer;padding:0;transition:border-color 0.2s;}
+.theme-toggle .knob{position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;
+  background:linear-gradient(135deg,var(--blue),var(--purple));transition:left .25s cubic-bezier(0.2, 0.8, 0.2, 1);}
+html[data-theme="dark"] .theme-toggle .knob{left:24px;}
+
+/* nav tabs */
+.nav-tabs{display:flex;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:5px;
+  margin-bottom:20px;width:fit-content;backdrop-filter:blur(16px);box-shadow:var(--shadow);}
+.nav-tab{border:none;background:transparent;color:var(--sub);font-weight:700;font-size:13px;padding:9px 20px;
+  border-radius:10px;cursor:pointer;font-family:var(--sans);display:flex;align-items:center;gap:6px;
+  transition:background-color .2s ease, color .2s ease, transform .15s ease;}
+.nav-tab:hover:not(.active){color:var(--blue);background:rgba(47,111,237,0.06);transform:translateY(-1px);}
+.nav-tab:active:not(.active){transform:translateY(0) scale(0.97);}
+.nav-tab.active{background:linear-gradient(135deg,var(--blue),var(--blue-d));color:#fff;box-shadow:0 4px 12px rgba(47,111,237,0.25);}
+.page{display:none;}
+.page.active{display:block;animation:pageFadeIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;}
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* filters */
+.filters{display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:var(--card);border:1px solid var(--border);
+  backdrop-filter:blur(16px);border-radius:18px;padding:14px 18px;box-shadow:var(--shadow);margin-bottom:24px;}
+.filters .fgroup{display:flex;flex-direction:column;gap:5px;}
+.filters label{font-size:10px;font-weight:800;color:var(--sub);text-transform:uppercase;letter-spacing:.6px;}
+.filters select{appearance:none;border:1px solid var(--border);background:var(--card-solid);color:var(--text);
+  border-radius:10px;padding:8px 32px 8px 14px;font-size:13px;font-weight:600;font-family:var(--sans);cursor:pointer;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%235B6478'/></svg>");
+  background-repeat:no-repeat;background-position:right 12px center;min-width:145px;
+  transition:border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;}
+.filters select:hover{border-color:var(--blue);transform:translateY(-1px);}
+.filters select:active{transform:translateY(0) scale(0.97);}
+.filters select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(47,111,237,0.12);outline:none;}
+.filters .spacer{flex:1;}
+.reset-link{font-size:12px;font-weight:800;color:var(--blue);cursor:pointer;user-select:none;transition:opacity 0.2s, transform 0.15s;display:inline-block;}
+.reset-link:hover{opacity:0.8;transform:scale(1.03);}
+
+/* KPI grid */
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:16px;margin-bottom:24px;}
+.kpi-card{background:var(--card);border:1px solid var(--border);backdrop-filter:blur(16px);border-radius:20px;
+  padding:18px 18px 14px;box-shadow:var(--shadow);position:relative;overflow:hidden;
+  animation:rise .6s cubic-bezier(.2,.8,.2,1) both;
+  transition:transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  cursor:pointer;}
+.kpi-card:hover{transform:translateY(-4px);box-shadow:0 15px 35px -10px rgba(31,45,90,0.22);}
+.kpi-card::before{content:"";position:absolute;inset:0;border-radius:20px;padding:1px;
+  background:linear-gradient(135deg,rgba(47,111,237,.35),transparent 40%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.5;transition:opacity 0.3s;}
+.kpi-card:hover::before{opacity:1;}
+@keyframes rise{from{opacity:0;transform:translateY(15px);}to{opacity:1;transform:translateY(0);}}
+.kpi-label{font-size:10.5px;color:var(--sub);font-weight:750;text-transform:uppercase;letter-spacing:.5px;}
+.kpi-val{font-family:var(--mono);font-size:22px;font-weight:700;margin-top:6px;letter-spacing:-.4px;}
+.kpi-sub{font-size:11.5px;margin-top:4px;font-weight:750;color:var(--sub);}
+.kpi-sub.pos{color:var(--green);} .kpi-sub.neg{color:var(--red);}
+.kpi-flag{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--amber);
+  background:rgba(245,158,11,.12);padding:2px 7px;border-radius:6px;margin-top:8px;display:inline-block;}
+
+/* charts */
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:18px;margin-bottom:24px;}
+.card{background:var(--card);border:1px solid var(--border);backdrop-filter:blur(16px);border-radius:20px;
+  padding:18px 20px 14px;box-shadow:var(--shadow);
+  transition:transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);}
+.card:hover{transform:translateY(-2px);box-shadow:0 15px 35px -12px rgba(31,45,90,0.20);}
+.card h3{margin:0 0 3px;font-size:14.5px;font-weight:800;font-family:var(--display);letter-spacing:-0.2px;}
+.card .hint{font-size:11.5px;color:var(--sub);margin:0 0 10px;}
+.c-8{grid-column:span 8;} .c-4{grid-column:span 4;} .c-6{grid-column:span 6;} .c-12{grid-column:span 12;} .c-3{grid-column:span 3;}
+.chart-box{position:relative;height:270px;}
+.chart-box.tall{height:320px;}
+.chart-box.short{height:230px;}
+
+@media(max-width:1180px){.kpi-grid{grid-template-columns:repeat(3,1fr);} .c-8,.c-4,.c-6,.c-3{grid-column:span 12;}}
+@media(max-width:640px){.kpi-grid{grid-template-columns:repeat(2,1fr);} .filters{gap:10px;}}
+
+/* table */
+.table-toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px;}
+.search-box{flex:1;min-width:200px;position:relative;}
+.search-box input{width:100%;padding:9px 12px 9px 34px;border-radius:10px;border:1px solid var(--border);
+  background:var(--card-solid);color:var(--text);font-size:13px;font-family:var(--sans);
+  transition:border-color 0.2s, box-shadow 0.2s;}
+.search-box input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(47,111,237,0.12);outline:none;}
+.search-box::before{content:"🔍";position:absolute;left:11px;top:9px;font-size:12px;opacity:.6;}
+table.data{width:100%;border-collapse:collapse;font-size:12.8px;}
+table.data thead th{text-align:left;padding:12px 10px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;
+  color:var(--sub);border-bottom:1px solid var(--border);cursor:pointer;white-space:nowrap;user-select:none;
+  transition:color 0.2s;}
+table.data thead th:hover{color:var(--blue);}
+table.data tbody td{padding:10px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);white-space:nowrap;}
+table.data tbody td.txt{font-family:var(--sans);font-weight:600;}
+table.data tbody tr{transition:background-color 0.15s ease;}
+table.data tbody tr:hover{background:rgba(47,111,237,0.05);}
+.badge{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;}
+.badge.dist{background:rgba(47,111,237,.12);color:var(--blue);} .badge.manu{background:rgba(124,92,252,.12);color:var(--purple);}
+.pagination{display:flex;align-items:center;gap:10px;justify-content:flex-end;margin-top:14px;font-size:12.5px;color:var(--sub);}
+.pagination button{border:1px solid var(--border);background:var(--card-solid);color:var(--text);border-radius:8px;
+  padding:6px 12px;cursor:pointer;font-weight:700;transition:transform 0.15s, background-color 0.15s;}
+.pagination button:hover:not(:disabled){background:var(--bg);transform:translateY(-1px);}
+.pagination button:disabled{opacity:.35;cursor:not-allowed;}
+
+.footer-note{text-align:center;color:var(--sub);font-size:11.5px;margin-top:30px;line-height:1.5;}
+
+/* metric-list cards (full P&L / KPI suite) */
+.metric-list{display:flex;flex-direction:column;}
+.metric-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 10px;margin:0 -10px;
+  border-bottom:1px dashed var(--border);font-size:12.5px;border-radius:6px;
+  transition:background-color 0.2s ease, padding-left 0.2s ease, color 0.2s ease;}
+.metric-row:hover:not(.total){background-color:rgba(47,111,237,0.05);color:var(--blue);padding-left:4px;}
+.metric-row:last-child{border-bottom:none;}
+.metric-row .m-label{color:var(--sub);font-weight:600;flex:1;}
+.metric-row:hover .m-label{color:inherit;}
+.metric-row .m-val{font-family:var(--mono);font-weight:700;white-space:nowrap;text-align:right;}
+.metric-row.total .m-label,.metric-row.total .m-val{color:var(--text);font-weight:800;}
+.metric-row.total{border-bottom:none;border-top:1.5px solid var(--border);margin-top:6px;padding-top:12px;}
+.dot-est{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--amber);margin-left:6px;
+  box-shadow:0 0 6px var(--amber);animation:pulseDot 2s infinite ease-in-out;}
+.section-title{font-family:var(--display);font-size:17px;font-weight:850;margin:32px 0 4px;letter-spacing:-0.3px;}
+.section-hint{font-size:12px;color:var(--sub);margin:0 0 14px;}
+
+/* data sources page */
+.src-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;}
+@media(max-width:1000px){.src-grid{grid-template-columns:1fr;}}
+.src-card{background:var(--card);border:1px solid var(--border);backdrop-filter:blur(16px);border-radius:20px;
+  padding:20px 22px;box-shadow:var(--shadow);transition:transform 0.2s ease, box-shadow 0.2s ease;}
+.src-card:hover{transform:translateY(-3px);box-shadow:0 15px 35px -10px rgba(31,45,90,0.20);}
+.src-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;}
+.src-title{font-size:15px;font-weight:800;font-family:var(--display);margin:0;letter-spacing:-0.2px;}
+.src-desc{font-size:12.5px;color:var(--sub);margin:4px 0 14px;line-height:1.5;}
+.status{padding:4px 12px;border-radius:20px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;}
+.status.connected{background:rgba(22,163,74,.12);color:var(--green);}
+.status.dummy{background:rgba(245,158,11,.12);color:var(--amber);}
+.status.pending{background:rgba(91,100,120,.12);color:var(--sub);}
+.upload-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.file-btn{border:1px dashed var(--border);background:var(--bg2);color:var(--text);border-radius:12px;
+  padding:10px 18px;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px;
+  transition:border-color 0.2s, color 0.2s, background-color 0.2s, transform 0.15s;}
+.file-btn:hover{border-color:var(--blue);color:var(--blue);background:rgba(47,111,237,0.04);transform:translateY(-1px);}
+.file-btn:active{transform:translateY(1px);}
+.file-btn.disabled{opacity:.45;cursor:not-allowed;pointer-events:none;}
+.src-msg{font-size:11.5px;font-weight:700;margin-left:2px;}
+.src-cols{margin-top:14px;}
+.src-cols summary{font-size:11.5px;font-weight:700;color:var(--blue);cursor:pointer;transition:opacity 0.2s;}
+.src-cols summary:hover{opacity:0.8;}
+.src-cols .cols-body{font-size:11.5px;color:var(--sub);line-height:1.7;margin-top:8px;font-family:var(--mono);
+  background:var(--bg2);border-radius:10px;padding:10px 12px;word-break:break-word;}
+
+/* login screen */
+body.logged-out .wrap {
+  display: none !important;
+}
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.5s;
+}
+.login-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.login-container {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  background: var(--bg);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Left Showcase Panel */
+.login-showcase {
+  flex: 1;
+  background: linear-gradient(135deg, #0A0E1A 0%, #15192E 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8% 6%;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+.login-showcase::before {
+  content: "";
+  position: absolute;
+  top: -20%;
+  left: -20%;
+  width: 60%;
+  height: 60%;
+  background: radial-gradient(circle, rgba(47, 111, 237, 0.15) 0%, transparent 70%);
+  filter: blur(80px);
+  pointer-events: none;
+}
+.login-showcase::after {
+  content: "";
+  position: absolute;
+  bottom: -20%;
+  right: -20%;
+  width: 60%;
+  height: 60%;
+  background: radial-gradient(circle, rgba(124, 92, 252, 0.12) 0%, transparent 70%);
+  filter: blur(80px);
+  pointer-events: none;
+}
+.showcase-content {
+  max-width: 580px;
+  position: relative;
+  z-index: 10;
+  animation: fadeUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.showcase-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 48px;
+}
+.showcase-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--blue), var(--purple));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  color: #fff;
+  font-size: 19px;
+  box-shadow: 0 8px 24px rgba(47, 111, 237, 0.35);
+}
+.showcase-header h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+.showcase-header span {
+  display: block;
+  font-size: 9.5px;
+  color: rgba(255,255,255,0.45);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.login-showcase h2 {
+  font-size: 34px;
+  line-height: 1.25;
+  font-weight: 800;
+  margin: 0 0 16px;
+  letter-spacing: -0.8px;
+  background: linear-gradient(120deg, #FFFFFF 30%, rgba(255,255,255,0.7) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.login-showcase p {
+  color: rgba(255,255,255,0.6);
+  font-size: 15.5px;
+  line-height: 1.6;
+  margin: 0 0 40px;
+}
+
+/* Telemetry stats */
+.telemetry-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 40px;
+}
+.telemetry-item {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 16px;
+  padding: 16px;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.telemetry-item:hover {
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.05);
+}
+.telemetry-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.telemetry-value {
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.telemetry-bar {
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.telemetry-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--blue), var(--purple));
+  border-radius: 2px;
+}
+.telemetry-dots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  height: 12px;
+}
+.active-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+}
+.active-dot.animated {
+  box-shadow: 0 0 8px var(--green);
+  animation: pulseDot 1.8s infinite ease-in-out;
+}
+.active-dot.animated:nth-child(2) { animation-delay: 0.3s; }
+.active-dot.animated:nth-child(3) { animation-delay: 0.6s; }
+.active-dot.animated:nth-child(4) { animation-delay: 0.9s; }
+@keyframes pulseDot {
+  0%, 100% { opacity: 0.4; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* SVG Line Chart animation */
+.showcase-chart-container {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 18px;
+  padding: 16px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.showcase-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.chart-line {
+  stroke-dasharray: 600;
+  stroke-dashoffset: 0;
+  animation: drawLine 6s ease-in-out infinite alternate;
+}
+@keyframes drawLine {
+  from { stroke-dashoffset: 400; }
+  to { stroke-dashoffset: 0; }
+}
+
+/* Form Panel */
+.login-form-panel {
+  flex: 0 0 460px;
+  background: var(--bg2);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 40px;
+  position: relative;
+  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.03);
+}
+html[data-theme="dark"] .login-form-panel {
+  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.4);
+}
+.login-form-panel .theme-toggle {
+  position: absolute;
+  top: 30px;
+  right: 40px;
+}
+.form-content {
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+  animation: fadeUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.1s both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.form-header {
+  margin-bottom: 32px;
+}
+.login-logo-mobile {
+  display: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--blue), var(--purple));
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  color: #fff;
+  font-size: 19px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 24px rgba(47, 111, 237, 0.35);
+}
+.form-header h2 {
+  font-size: 26px;
+  font-weight: 800;
+  margin: 0 0 8px;
+  letter-spacing: -0.6px;
+}
+.form-header p {
+  color: var(--sub);
+  font-size: 13.5px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Input Fields styling */
+.login-form-panel .input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.login-form-panel .input-group label {
+  font-size: 10.5px;
+  font-weight: 750;
+  color: var(--sub);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.input-icon {
+  position: absolute;
+  left: 14px;
+  font-size: 14px;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+.input-wrapper input {
+  width: 100%;
+  padding: 12px 14px 12px 38px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card-solid);
+  color: var(--text);
+  font-size: 13.5px;
+  font-family: var(--sans);
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+  outline: none;
+}
+.input-wrapper input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.12);
+}
+.input-wrapper input:focus + .input-icon {
+  opacity: 0.9;
+}
+
+/* Action button */
+.login-form-panel .login-btn {
+  width: 100%;
+  background: linear-gradient(135deg, var(--blue), var(--blue-d));
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 13px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(47, 111, 237, 0.15);
+}
+.login-form-panel .login-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(47, 111, 237, 0.25);
+}
+.login-form-panel .login-btn:active {
+  transform: translateY(1px);
+}
+.btn-arrow {
+  transition: transform 0.2s ease;
+}
+.login-form-panel .login-btn:hover .btn-arrow {
+  transform: translateX(3px);
+}
+
+/* Error design */
+.login-form-panel .login-error {
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 14px;
+  text-align: center;
+  background: rgba(239, 68, 68, 0.08);
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(239, 68, 68, 0.12);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.error-icon {
+  font-size: 13px;
+}
+
+/* Credentials hint card */
+.login-form-panel .login-creds-hint {
+  font-size: 11.5px;
+  color: var(--sub);
+  margin-top: 36px;
+  background: rgba(15, 23, 42, 0.02);
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+html[data-theme="dark"] .login-form-panel .login-creds-hint {
+  background: rgba(255, 255, 255, 0.02);
+}
+.hint-header {
+  font-weight: 800;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  opacity: 0.8;
+}
+.hint-body {
+  display: flex;
+  justify-content: space-between;
+  opacity: 0.95;
+}
+
+/* Responsive Rules */
+@media (max-width: 900px) {
+  .login-showcase {
+    display: none;
+  }
+  .login-form-panel {
+    flex: 1;
+    padding: 24px;
+  }
+  .login-logo-mobile {
+    display: flex;
+  }
+  .login-form-panel .theme-toggle {
+    top: 24px;
+    right: 24px;
+  }
+}
+
+/* signup / switch-mode link */
+.auth-switch {
+  text-align: center;
+  margin-top: 22px;
+  font-size: 12.5px;
+  color: var(--sub);
+}
+.auth-switch a {
+  color: var(--blue);
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+.auth-switch a:hover { opacity: 0.75; }
+
+/* signup success message */
+.signup-success {
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 14px;
+  text-align: center;
+  background: rgba(22,163,74,0.08);
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(22,163,74,0.15);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+</style>
+</head>
+<body>
+
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-container">
+    
+    <!-- LEFT PANEL: SHOWCASE (Visible on Desktop) -->
+    <div class="login-showcase">
+      <div class="showcase-content">
+        <div class="showcase-header">
+          <div class="showcase-logo">AK</div>
+          <div>
+            <h3>Apex Intel</h3>
+            <span>BI &amp; TELEMETRY SYSTEM</span>
+          </div>
+        </div>
+        
+        <h2>Transform Raw Data Into Actionable Channel Insights</h2>
+        <p>Apex KPI integrates Primary Sales, Debtors, Inventory, Cost, and Expenses under a single pane of glass.</p>
+        
+        <!-- Interactive Telemetry Grid (Visual design showcase) -->
+        <div class="telemetry-grid">
+          <div class="telemetry-item">
+            <div class="telemetry-label">Ingestion Rate</div>
+            <div class="telemetry-value">99.8%</div>
+            <div class="telemetry-bar"><div class="telemetry-fill" style="width: 99.8%"></div></div>
+          </div>
+          <div class="telemetry-item">
+            <div class="telemetry-label">Active Nodes</div>
+            <div class="telemetry-value">4 Regions</div>
+            <div class="telemetry-dots">
+              <span class="active-dot animated"></span>
+              <span class="active-dot animated"></span>
+              <span class="active-dot animated"></span>
+              <span class="active-dot animated"></span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Interactive SVG Chart Preview (Interactive animation!) -->
+        <div class="showcase-chart-container">
+          <svg class="showcase-svg" viewBox="0 0 300 120">
+            <defs>
+              <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="rgba(124, 92, 252, 0.4)" />
+                <stop offset="100%" stop-color="rgba(124, 92, 252, 0)" />
+              </linearGradient>
+            </defs>
+            <!-- Grid lines -->
+            <line x1="0" y1="20" x2="300" y2="20" stroke="rgba(255,255,255,0.06)" />
+            <line x1="0" y1="50" x2="300" y2="50" stroke="rgba(255,255,255,0.06)" />
+            <line x1="0" y1="80" x2="300" y2="80" stroke="rgba(255,255,255,0.06)" />
+            
+            <!-- Area under line -->
+            <path class="chart-area" d="M 0 120 L 0 80 Q 40 40 80 70 T 160 30 T 240 60 T 300 20 L 300 120 Z" fill="url(#chartGrad)"></path>
+            
+            <!-- Spline Line -->
+            <path class="chart-line" d="M 0 80 Q 40 40 80 70 T 160 30 T 240 60 T 300 20" fill="none" stroke="#7C5CFC" stroke-width="3" stroke-linecap="round"></path>
+            
+            <!-- Interactive blinking markers -->
+            <circle cx="80" cy="70" r="4" fill="#fff" stroke="#7C5CFC" stroke-width="2">
+              <animate attributeName="r" values="3;5;3" dur="2s" repeatCount="indefinite" />
+            </circle>
+            <circle cx="160" cy="30" r="4" fill="#fff" stroke="#7C5CFC" stroke-width="2">
+              <animate attributeName="r" values="3;5;3" dur="1.5s" repeatCount="indefinite" />
+            </circle>
+            <circle cx="240" cy="60" r="4" fill="#fff" stroke="#7C5CFC" stroke-width="2">
+              <animate attributeName="r" values="3;5;3" dur="2.5s" repeatCount="indefinite" />
+            </circle>
+          </svg>
+        </div>
+      </div>
+    </div>
+    
+    <!-- RIGHT PANEL: FORM PANEL -->
+    <div class="login-form-panel">
+      <button class="theme-toggle" id="loginThemeToggle" title="Toggle theme"><div class="knob"></div></button>
+      
+      <div class="form-content">
+
+        <!-- ===== LOGIN VIEW ===== -->
+        <div id="loginView">
+          <div class="form-header">
+            <div class="login-logo-mobile">AK</div>
+            <h2>Welcome Back</h2>
+            <p>Please enter your credentials to access the Apex KPI system.</p>
+          </div>
+
+          <form class="login-form" id="loginForm">
+            <div class="input-group">
+              <label for="username">Username</label>
+              <div class="input-wrapper">
+                <span class="input-icon">👤</span>
+                <input type="text" id="username" autocomplete="username" required placeholder="Enter your username">
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label for="password">Password</label>
+              <div class="input-wrapper">
+                <span class="input-icon">🔒</span>
+                <input type="password" id="password" autocomplete="current-password" required placeholder="Enter your password">
+              </div>
+            </div>
+
+            <button type="submit" class="login-btn">
+              <span>Access System</span>
+              <span class="btn-arrow">&rarr;</span>
+            </button>
+
+            <div class="login-error" id="loginError">
+              <span class="error-icon">⚠️</span> Invalid credentials. Please try again.
+            </div>
+          </form>
+
+          <div class="auth-switch">Don't have an account? <a id="showSignup">Create one</a></div>
+        </div>
+
+        <!-- ===== SIGNUP VIEW ===== -->
+        <div id="signupView" style="display:none">
+          <div class="form-header">
+            <div class="login-logo-mobile">AK</div>
+            <h2>Create Account</h2>
+            <p>Register a new account to access the Apex KPI system.</p>
+          </div>
+
+          <form class="login-form" id="signupForm">
+            <div class="input-group">
+              <label for="signupUsername">Username</label>
+              <div class="input-wrapper">
+                <span class="input-icon">👤</span>
+                <input type="text" id="signupUsername" autocomplete="username" required placeholder="Choose a username">
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label for="signupPassword">Password</label>
+              <div class="input-wrapper">
+                <span class="input-icon">🔒</span>
+                <input type="password" id="signupPassword" autocomplete="new-password" required placeholder="Choose a password">
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label for="signupConfirm">Confirm Password</label>
+              <div class="input-wrapper">
+                <span class="input-icon">🔒</span>
+                <input type="password" id="signupConfirm" autocomplete="new-password" required placeholder="Repeat your password">
+              </div>
+            </div>
+
+            <button type="submit" class="login-btn">
+              <span>Create Account</span>
+              <span class="btn-arrow">&rarr;</span>
+            </button>
+
+            <div class="login-error" id="signupError">
+              <span class="error-icon">⚠️</span> <span id="signupErrorMsg">Error</span>
+            </div>
+
+            <div class="signup-success" id="signupSuccess">
+              ✅ Account created! You can now <a id="goLoginAfterSignup" style="color:var(--blue);font-weight:700;cursor:pointer;">sign in</a>.
+            </div>
+          </form>
+
+          <div class="auth-switch">Already have an account? <a id="showLogin">Sign in</a></div>
+        </div>
+
+      </div>
+    </div>
+    
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark">AK</div>
+      <div>
+        <h1>Apex KPI Dashboard</h1>
+        <span id="dataSourceLabel">Grouped by Main Channel · Sub Channel</span>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="btnPrint">🖨️ Print</button>
+      <button class="icon-btn" id="btnCsv">⬇ CSV</button>
+      <button class="icon-btn" id="btnXlsx">⬇ Excel</button>
+      <button class="theme-toggle" id="themeToggle" title="Toggle theme"><div class="knob"></div></button>
+      <button class="icon-btn" id="btnLogout" style="background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.2); color: var(--red);">🚪 Logout</button>
+    </div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" id="navDash">📊 Dashboard</button>
+    <button class="nav-tab" id="navSrc">📁 Data Sources</button>
+  </div>
+
+  <!-- ===================== DASHBOARD PAGE ===================== -->
+  <div class="page active dash-wrap wrap" id="page-dashboard" style="padding:0;max-width:80vw;margin:0 auto;">
+
+    <div class="filters">
+      <div class="fgroup"><label>Year</label><select id="fYear"><option value="all">All Years</option></select></div>
+      <div class="fgroup"><label>Month</label><select id="fMonth"><option value="all">All Months</option></select></div>
+      <div class="fgroup"><label>Main Channel</label><select id="fMain"><option value="all">All Main Channels</option></select></div>
+      <div class="fgroup"><label>Sub Channel</label><select id="fSub"><option value="all">All Sub Channels</option></select></div>
+      <div class="fgroup"><label>Region</label><select id="fRegion"><option value="all">All Regions</option></select></div>
+      <div class="spacer"></div>
+      <span class="reset-link" id="resetFilters">Reset filters</span>
+    </div>
+
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <div class="grid">
+      <div class="card c-8">
+        <h3>Primary Sales Trend — Sales Value vs Profit</h3><p class="hint">Monthly, filtered by channel/region above</p>
+        <div class="chart-box tall"><canvas id="chartTrend"></canvas></div>
+      </div>
+      <div class="card c-4">
+        <h3>Main Channel Contribution</h3><p class="hint">Share of Primary Sales Value</p>
+        <div class="chart-box tall"><canvas id="chartMainDonut"></canvas></div>
+      </div>
+
+      <div class="card c-6">
+        <h3>Sub Channel Breakdown</h3><p class="hint">Sales Value by Sub Channel</p>
+        <div class="chart-box"><canvas id="chartSubBar"></canvas></div>
+      </div>
+      <div class="card c-6">
+        <h3>Region-wise Primary Sales</h3><p class="hint">Sales Value by Region</p>
+        <div class="chart-box"><canvas id="chartRegionBar"></canvas></div>
+      </div>
+
+      <div class="card c-6">
+        <h3>Debtors Ageing</h3><p class="hint">Amount in Local Currency by ageing bucket · company-wide, Year/Month filter only</p>
+        <div class="chart-box"><canvas id="chartDebtorAge"></canvas></div>
+      </div>
+      <div class="card c-6">
+        <h3>Inventory Ageing</h3><p class="hint">Stock value by ageing bucket · company-wide, Year/Month filter only</p>
+        <div class="chart-box"><canvas id="chartStockAge"></canvas></div>
+      </div>
+
+      <div class="card c-8">
+        <h3>Secondary Sales vs Returns (Axianta)</h3><p class="hint">Monthly Net Value · Region filter applies</p>
+        <div class="chart-box"><canvas id="chartSecTrend"></canvas></div>
+      </div>
+      <div class="card c-4">
+        <h3>Top SKUs</h3><p class="hint">By Primary Sales Value, filtered scope</p>
+        <div class="chart-box"><canvas id="chartTopSku"></canvas></div>
+      </div>
+    </div>
+
+    <p class="section-title">Full Manufacturing P&amp;L &amp; KPI Suite</p>
+    <p class="section-hint">Every KPI from the Manufacturing.xlsx workbook, applied to filtered scope above. Upload the matching source on the Data Sources page to populate these metrics with real data.</p>
+    <div class="grid" id="pnlGrid"></div>
+
+    <div class="card c-12">
+      <h3>Primary Sales — Detailed Records</h3><p class="hint">Search, sort, filter and export the underlying rows</p>
+      <div class="table-toolbar">
+        <div class="search-box"><input id="tblSearch" placeholder="Search channel, region, SKU…"></div>
+        <span style="font-size:12px;color:var(--sub);font-weight:700" id="rowCount"></span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="data" id="dataTable">
+          <thead><tr>
+            <th data-k="year">Year</th><th data-k="monthName">Month</th>
+            <th data-k="mainChannel">Main Channel</th><th data-k="subChannel">Sub Channel</th>
+            <th data-k="region">Region</th><th data-k="skuDesc">SKU</th>
+            <th data-k="qty">Qty</th><th data-k="salesValue">Sales Value</th><th data-k="profit">Profit</th>
+          </tr></thead>
+          <tbody id="tblBody"></tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <span id="pageInfo"></span>
+        <button id="prevPage">‹ Prev</button>
+        <button id="nextPage">Next ›</button>
+      </div>
+    </div>
+
+    <p class="footer-note">Apex KPI Dashboard · grouped by Main Channel / Sub Channel · upload your data sources on the Data Sources page to populate the dashboard · Built with Chart.js</p>
+  </div>
+
+  <!-- ===================== DATA SOURCES PAGE ===================== -->
+  <div class="page" id="page-datasources">
+    <div class="card" style="margin-bottom:16px;">
+      <h3 style="margin-bottom:6px;">Connect your data</h3>
+      <p class="hint" style="margin-bottom:0;">Upload each source separately below (.xlsx / .xls / .csv). Once a source is uploaded, the dashboard will populate with your real data for that source. Other sources remain empty until their files are uploaded.</p>
+    </div>
+
+    <div class="src-grid">
+
+      <div class="src-card">
+        <div class="src-top">
+          <div><p class="src-title">① Primary Sales</p><p class="src-desc">Billing-level sales from SAP. Drives the Main Channel / Sub Channel grouping across the whole dashboard.</p></div>
+          <span class="status pending" id="statusPrimary">Not Connected</span>
+        </div>
+        <div class="upload-row">
+          <label class="file-btn" for="uploadPrimary">📤 Upload file</label>
+          <input type="file" id="uploadPrimary" accept=".xlsx,.xls,.csv" style="display:none">
+          <span class="src-msg" id="msgPrimary"></span>
+        </div>
+        <details class="src-cols"><summary>Expected columns</summary>
+          <div class="cols-body">Billing Date, Main Channel, Sub Channel, Region, Division, SKU Code, SKU, Sales Person, Qty, Sales Value, Profit</div>
+        </details>
+      </div>
+
+      <div class="src-card">
+        <div class="src-top">
+          <div><p class="src-title">② Debtor Data Table</p><p class="src-desc">Open-item ageing per debtor. Drives Over-60-Days Debtors % and Avg Collection Period.</p></div>
+          <span class="status pending" id="statusDebtor">Not Connected</span>
+        </div>
+        <div class="upload-row">
+          <label class="file-btn" for="uploadDebtor">📤 Upload file</label>
+          <input type="file" id="uploadDebtor" accept=".xlsx,.xls,.csv" style="display:none">
+          <span class="src-msg" id="msgDebtor"></span>
+        </div>
+        <details class="src-cols"><summary>Expected columns</summary>
+          <div class="cols-body">Document Date, Amount in Local Currency, Channel, &lt;7D, 7D-13D, 14D-30D, 31D-60D, 61D-90D, 91D-120D, 121D-180D, 181D-360D, 361D+</div>
+        </details>
+      </div>
+
+      <div class="src-card">
+        <div class="src-top">
+          <div><p class="src-title">③ Inventory Snapshot</p><p class="src-desc">Stock value/qty by ageing bucket. Drives Over-90-Days Stock % and stock ageing chart. No channel field — company-wide only.</p></div>
+          <span class="status pending" id="statusInventory">Not Connected</span>
+        </div>
+        <div class="upload-row">
+          <label class="file-btn" for="uploadInventory">📤 Upload file</label>
+          <input type="file" id="uploadInventory" accept=".xlsx,.xls,.csv" style="display:none">
+          <span class="src-msg" id="msgInventory"></span>
+        </div>
+        <details class="src-cols"><summary>Expected columns</summary>
+          <div class="cols-body">Division, Material Description, 0 - 30 Days Value, 30 - 60 Days Value, 60 - 90 Days Value, Over 90 Days Value, Total Value, Total Qty, Time Period</div>
+        </details>
+      </div>
+
+      <div class="src-card">
+        <div class="src-top">
+          <div><p class="src-title">④ Sales & Returns (Axianta)</p><p class="src-desc">Secondary sales / free issues / returns from the field. No channel field — grouped by Region/Territory/Brand.</p></div>
+          <span class="status pending" id="statusSecondary">Not Connected</span>
+        </div>
+        <div class="upload-row">
+          <label class="file-btn" for="uploadSecondary">📤 Upload file</label>
+          <input type="file" id="uploadSecondary" accept=".xlsx,.xls,.csv" style="display:none">
+          <span class="src-msg" id="msgSecondary"></span>
+        </div>
+        <details class="src-cols"><summary>Expected columns</summary>
+          <div class="cols-body">Date, TypeTxn, Region, Territory, Brand, OutletType, GrossValue, NetValue, Qty, TotalFreeUnits</div>
+        </details>
+      </div>
+
+      <div class="src-card">
+        <div class="src-top">
+          <div><p class="src-title">⑤ Cost of Sales / Overheads</p><p class="src-desc">Material cost, labour, electricity, machine & overhead absorption, royalty. Drives the full Cost-of-Sales breakdown panel and Avg Stock Holding Period / Avg Settlement Period.</p></div>
+          <span class="status pending" id="statusCost">Not Connected</span>
+        </div>
+        <div class="upload-row">
+          <label class="file-btn" for="uploadCost">📤 Upload file</label>
+          <input type="file" id="uploadCost" accept=".xlsx,.xls,.csv" style="display:none">
+          <span class="src-msg" id="msgCost"></span>
+        </div>
+        <details class="src-cols"><summary>Expected columns</summary>
+          <div class="cols-body">Time Period, Material Cost, 20:1 FOC, VAT for NBT2%, Damage Good, Production consumable, Labour, Labour Absorb, Electricity, Building Maintain, Consumables, Machinery & Tool Maintenance, Overhead-Other Labour, Overhead-Other Machine, Machine, Machine Absorb, ROYALTY, Creditor Balance</div>
+        </details>
+      </div>
+
+      <div class="src-card">
+        <div class="src-top">
+          <div><p class="src-title">⑥ Expenses &amp; P&amp;L Adjustments</p><p class="src-desc">Advertising, distribution cost, admin, donations, finance cost, bad debt / inventory adjustments, other income, corporate tax, majority interest, EVA. Drives the full P&amp;L waterfall down to Net Profit After Tax.</p></div>
+          <span class="status pending" id="statusExpense">Not Connected</span>
+        </div>
+        <div class="upload-row">
+          <label class="file-btn" for="uploadExpense">📤 Upload file</label>
+          <input type="file" id="uploadExpense" accept=".xlsx,.xls,.csv" style="display:none">
+          <span class="src-msg" id="msgExpense"></span>
+        </div>
+        <details class="src-cols"><summary>Expected columns</summary>
+          <div class="cols-body">Time Period, Advertising & Promotions MD, Advertising & Promotions, R&D Expenses, Distribution Cost, Employee Related, Donations, Administration, Shared Services, Finance Cost, Bad Debt, Inventory Adjustment, Other Income, Corporate Tax %, Majority Interest, EVA</div>
+        </details>
+      </div>
+
+      <div class="src-card">
+        <div class="src-top">
+          <div><p class="src-title">⑦ Company Reference Metrics</p><p class="src-desc">Headcount, distributor count, and the "New KPIs" section (SS / LED / LVS quantities, customer complaints). Drives all Per-Head and Per-Distributor productivity KPIs.</p></div>
+          <span class="status pending" id="statusRef">Not Connected</span>
+        </div>
+        <div class="upload-row">
+          <label class="file-btn" for="uploadRef">📤 Upload file</label>
+          <input type="file" id="uploadRef" accept=".xlsx,.xls,.csv" style="display:none">
+          <span class="src-msg" id="msgRef"></span>
+        </div>
+        <details class="src-cols"><summary>Expected columns</summary>
+          <div class="cols-body">Time Period, No. of Employees, No. of Manu Persons, No. of Distributors, SS Qty, LED Qty, LVS Qty, No of Customer Complaints</div>
+        </details>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+try{
+(function(){
+  function loadScript(srcs){
+    return new Promise(function(resolve,reject){
+      var i=0;
+      function tryNext(){
+        if(i>=srcs.length){ reject(new Error('All CDN sources failed for '+srcs[0])); return; }
+        var s=document.createElement('script');
+        s.src=srcs[i]; s.onload=resolve; s.onerror=function(){ i++; tryNext(); };
+        document.head.appendChild(s);
+      }
+      tryNext();
+    });
+  }
+  var chartSrcs=[
+    'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js',
+    'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js',
+    'https://unpkg.com/chart.js@4.4.4/dist/chart.umd.min.js'
+  ];
+  var xlsxSrcs=[
+    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+    'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+    'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
+  ];
+  Promise.all([loadScript(chartSrcs), loadScript(xlsxSrcs)])
+    .then(function(){ if(window.initApexDashboard) window.initApexDashboard(); })
+    .catch(function(err){
+      document.body.insertAdjacentHTML('afterbegin',
+        '<div style="background:#EF4444;color:#fff;padding:12px 20px;font-family:sans-serif;font-size:13.5px;text-align:center;font-weight:600;">⚠ Could not load chart/spreadsheet libraries. Check your internet connection and reload the page.</div>');
+      console.error(err);
+    });
+})();
+}catch(e){ console.error('library loader failed to start', e); }
+
+/* ---------------- nav ---------------- */
+document.getElementById('navDash').addEventListener('click',function(){
+  document.getElementById('navDash').classList.add('active');
+  document.getElementById('navSrc').classList.remove('active');
+  document.getElementById('page-dashboard').classList.add('active');
+  document.getElementById('page-datasources').classList.remove('active');
+});
+document.getElementById('navSrc').addEventListener('click',function(){
+  document.getElementById('navSrc').classList.add('active');
+  document.getElementById('navDash').classList.remove('active');
+  document.getElementById('page-datasources').classList.add('active');
+  document.getElementById('page-dashboard').classList.remove('active');
+});
+document.getElementById('themeToggle').addEventListener('click',function(){
+  var html=document.documentElement;
+  html.setAttribute('data-theme', html.getAttribute('data-theme')==='dark'?'light':'dark');
+  if(window.renderAllApex) window.renderAllApex();
+});
+
+// Auth check and setup
+(function() {
+  var loggedIn = sessionStorage.getItem('apex_logged_in') === 'true';
+  if (!loggedIn) {
+    document.body.classList.add('logged-out');
+  } else {
+    document.getElementById('loginOverlay').classList.add('hidden');
+  }
+
+  // Theme toggle on login screen
+  document.getElementById('loginThemeToggle').addEventListener('click', function() {
+    var html = document.documentElement;
+    var newTheme = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', newTheme);
+    if (window.renderAllApex) window.renderAllApex();
+  });
+
+  // Helper: load user store from localStorage
+  function getUsers() {
+    try { return JSON.parse(localStorage.getItem('apex_users') || '[]'); } catch(e) { return []; }
+  }
+  function saveUsers(users) {
+    localStorage.setItem('apex_users', JSON.stringify(users));
+  }
+
+  // Switch between login and signup views
+  function showLoginView() {
+    document.getElementById('loginView').style.display = '';
+    document.getElementById('signupView').style.display = 'none';
+    document.getElementById('loginError').style.display = 'none';
+  }
+  function showSignupView() {
+    document.getElementById('signupView').style.display = '';
+    document.getElementById('loginView').style.display = 'none';
+    document.getElementById('signupError').style.display = 'none';
+    document.getElementById('signupSuccess').style.display = 'none';
+  }
+
+  document.getElementById('showSignup').addEventListener('click', showSignupView);
+  document.getElementById('showLogin').addEventListener('click', showLoginView);
+  document.getElementById('goLoginAfterSignup').addEventListener('click', showLoginView);
+
+  // Login form submit handler
+  document.getElementById('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var user = document.getElementById('username').value.trim();
+    var pass = document.getElementById('password').value.trim();
+    var errorDiv = document.getElementById('loginError');
+
+    var users = getUsers();
+    var match = users.find(function(u) { return u.username === user && u.password === pass; });
+
+    if (match) {
+      errorDiv.style.display = 'none';
+      sessionStorage.setItem('apex_logged_in', 'true');
+      sessionStorage.setItem('apex_current_user', user);
+      document.body.classList.remove('logged-out');
+      document.getElementById('loginOverlay').classList.add('hidden');
+      document.getElementById('password').value = '';
+      if (window.renderAllApex) window.renderAllApex();
+    } else {
+      errorDiv.style.display = 'flex';
+      errorDiv.style.animation = 'none';
+      errorDiv.offsetHeight;
+      errorDiv.style.animation = '';
+    }
+  });
+
+  // Signup form submit handler
+  document.getElementById('signupForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var user = document.getElementById('signupUsername').value.trim();
+    var pass = document.getElementById('signupPassword').value.trim();
+    var confirm = document.getElementById('signupConfirm').value.trim();
+    var errorDiv = document.getElementById('signupError');
+    var msgEl = document.getElementById('signupErrorMsg');
+    var successDiv = document.getElementById('signupSuccess');
+
+    errorDiv.style.display = 'none';
+    successDiv.style.display = 'none';
+
+    function showErr(msg) {
+      msgEl.textContent = msg;
+      errorDiv.style.display = 'flex';
+      errorDiv.style.animation = 'none';
+      errorDiv.offsetHeight;
+      errorDiv.style.animation = '';
+    }
+
+    if (!user) { showErr('Username cannot be empty.'); return; }
+    if (pass.length < 6) { showErr('Password must be at least 6 characters.'); return; }
+    if (pass !== confirm) { showErr('Passwords do not match.'); return; }
+
+    var users = getUsers();
+    if (users.find(function(u) { return u.username === user; })) {
+      showErr('Username already taken. Please choose another.'); return;
+    }
+
+    users.push({ username: user, password: pass });
+    saveUsers(users);
+
+    document.getElementById('signupUsername').value = '';
+    document.getElementById('signupPassword').value = '';
+    document.getElementById('signupConfirm').value = '';
+    successDiv.style.display = 'flex';
+  });
+
+  // Logout button handler
+  document.getElementById('btnLogout').addEventListener('click', function() {
+    sessionStorage.removeItem('apex_logged_in');
+    sessionStorage.removeItem('apex_current_user');
+    document.body.classList.add('logged-out');
+    document.getElementById('loginOverlay').classList.remove('hidden');
+    showLoginView();
+  });
+})();
+
+window.initApexDashboard=function(){
+"use strict";
+
+/* ---------------- palette / helpers ---------------- */
+function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+function colors(){return {blue:cssv('--blue'),purple:cssv('--purple'),green:cssv('--green'),red:cssv('--red'),amber:cssv('--amber'),sub:cssv('--sub'),text:cssv('--text'),border:cssv('--border')};}
+const PALETTE=['#2F6FED','#7C5CFC','#16A34A','#F59E0B','#EF4444','#0EA5E9','#EC4899','#84CC16'];
+
+function sum(arr,key){return arr.reduce((s,r)=>s+(typeof key==='function'?key(r):(r[key]||0)),0);}
+function money(v){
+  let sign=v<0?'-':''; v=Math.abs(v||0);
+  if(v>=1e9) return sign+'Rs '+(v/1e9).toFixed(2)+'B';
+  if(v>=1e6) return sign+'Rs '+(v/1e6).toFixed(2)+'M';
+  if(v>=1e3) return sign+'Rs '+(v/1e3).toFixed(1)+'K';
+  return sign+'Rs '+v.toFixed(0);
+}
+function pct(v){ if(v==null||!isFinite(v)) return '—'; return (v*100).toFixed(1)+'%'; }
+function normKey(k){ return String(k).trim().toLowerCase().replace(/[^a-z0-9]/g,''); }
+function numVal(v){
+  if(v==null||v==='') return 0;
+  if(typeof v==='number') return v;
+  const n=parseFloat(String(v).replace(/[,%\s]/g,'')); return isNaN(n)?0:n;
+}
+function parseDateVal(v){
+  if(v==null||v==='') return null;
+  if(typeof v==='number'){ return new Date(Math.round((v-25569)*86400*1000)); }
+  const d=new Date(v); return isNaN(d)?null:d;
+}
+function rowsFromWorkbook(wb){
+  let out=[];
+  wb.SheetNames.forEach(name=>{
+    const json=XLSX.utils.sheet_to_json(wb.Sheets[name],{defval:null});
+    json.forEach(r=>{ const norm={}; Object.keys(r).forEach(k=>norm[normKey(k)]=r[k]); out.push(norm); });
+  });
+  return out;
+}
+
+/* ---------------- reference data ---------------- */
+const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+/* ---------------- data stores ---------------- */
+let primaryRows=[], debtorRows=[], inventoryRows=[], secondaryRows=[], costRows=[], expenseRows=[], refRows=[];
+const sourceStatus={primary:'pending',debtor:'pending',inventory:'pending',secondary:'pending',cost:'pending',expense:'pending',ref:'pending'};
+
+/* ---------------- upload builders ---------------- */
+function buildPrimary(rawRows){
+  const out=[];
+  rawRows.forEach(r=>{
+    const d=parseDateVal(r.billingdate||r.createdon);
+    if(!d) return;
+    out.push({year:d.getFullYear(),month:d.getMonth(),monthName:MONTHS[d.getMonth()],
+      mainChannel:String(r.mainchannel||'Unspecified'),subChannel:String(r.subchannel||'Unspecified'),
+      region:String(r.region||'Unspecified'),division:String(r.division||''),
+      skuCode:String(r.skucode||''),skuDesc:String(r.sku||r.skucode||'SKU'),
+      qty:numVal(r.qty),salesValue:numVal(r.salesvalue),profit:numVal(r.profit)});
+  });
+  return out;
+}
+function buildDebtor(rawRows){
+  const out=[];
+  rawRows.forEach(r=>{
+    const d=parseDateVal(r.documentdate||r.netduedate);
+    if(!d) return;
+    const b0_30=numVal(r['7d'])+numVal(r['7d13d'])+numVal(r['14d30d']);
+    const b31_60=numVal(r['31d60d']), b61_90=numVal(r['61d90d']), b91_120=numVal(r['91d120d']),
+          b121_180=numVal(r['121d180d']), b181_360=numVal(r['181d360d']), b361plus=numVal(r['361d']);
+    const total=b0_30+b31_60+b61_90+b91_120+b121_180+b181_360+b361plus || Math.abs(numVal(r.amountinlocalcurrency));
+    out.push({year:d.getFullYear(),month:d.getMonth(),monthName:MONTHS[d.getMonth()],
+      channel:String(r.channel||'Other'),b0_30,b31_60,b61_90,b91_120,b121_180,b181_360,b361plus,total});
+  });
+  return out;
+}
+function buildInventory(rawRows){
+  const out=[];
+  rawRows.forEach(r=>{
+    const d=parseDateVal(r.dateaddedtoinventory)||new Date();
+    out.push({year:d.getFullYear(),month:d.getMonth(),monthName:MONTHS[d.getMonth()],
+      division:String(r.divisiondescription||r.division||'Unspecified'),
+      b0_30:numVal(r['030daysvalue']),b30_60:numVal(r['3060daysvalue']),b60_90:numVal(r['6090daysvalue']),
+      over90:numVal(r['over90daysvalue']),totalValue:numVal(r.totalvalue),totalQty:numVal(r.totalqty)});
+  });
+  return out;
+}
+function buildSecondary(rawRows){
+  const out=[];
+  rawRows.forEach(r=>{
+    const d=parseDateVal(r.date);
+    if(!d) return;
+    out.push({year:d.getFullYear(),month:d.getMonth(),monthName:MONTHS[d.getMonth()],
+      region:String(r.region||'Unspecified'),outletType:String(r.outlettype||'Unspecified'),
+      typeTxn:/return/i.test(String(r.typetxn||''))?'Return':'Sales',
+      grossValue:numVal(r.grossvalue),netValue:numVal(r.netvalue),qty:numVal(r.qty),freeUnits:numVal(r.totalfreeunits)});
+  });
+  return out;
+}
+
+function buildCost(rawRows){
+  const out=[];
+  rawRows.forEach(r=>{
+    const d=parseDateVal(r.timeperiod)||parseDateVal(r.date);
+    const yr=d?d.getFullYear():(new Date()).getFullYear(), mo=d?d.getMonth():0;
+    const materialCost=numVal(r.materialcost);
+    const foc=numVal(r['201foc']||r.foc);
+    const vatNbt=numVal(r.vatfornbt2||r.vatfornbt);
+    const damageGood=numVal(r.damagegood);
+    const productionConsumable=numVal(r.productionconsumable);
+    const labour=numVal(r.labour);
+    const labourAbsorb=numVal(r.labourabsorb)||labour;
+    const electricity=numVal(r.electricity);
+    const buildingMaintain=numVal(r.buildingmaintain);
+    const consumables=numVal(r.consumables);
+    const machineryToolMaint=numVal(r.machinerytoolmaintanance||r.machinerytoolmaintenance);
+    const ohOtherLabour=numVal(r.overheadotherlabour);
+    const ohOtherMachine=numVal(r.overheadothermachine);
+    const totalOH=electricity+buildingMaintain+consumables+machineryToolMaint+ohOtherLabour+ohOtherMachine;
+    const machine=numVal(r.machine);
+    const machineAbsorb=numVal(r.machineabsorb)||machine;
+    const royalty=numVal(r.rotalty||r.royalty);
+    const totalCOS=numVal(r.totalcos)||(materialCost+foc+vatNbt+damageGood+productionConsumable+labour+totalOH+machine+royalty);
+    const creditorBalance=numVal(r.creditorbalance);
+    out.push({year:yr,month:mo,monthName:MONTHS[mo],materialCost,foc,vatNbt,damageGood,productionConsumable,labour,
+      labourAbsorb,electricity,buildingMaintain,consumables,machineryToolMaint,ohOtherLabour,ohOtherMachine,totalOH,
+      ohAbsorb:totalOH,machine,machineAbsorb,royalty,totalCOS,creditorBalance,over60CreditorsPct:numVal(r.over60creditorspct)||0.2});
+  });
+  return out;
+}
+function buildExpense(rawRows){
+  const out=[];
+  rawRows.forEach(r=>{
+    const d=parseDateVal(r.timeperiod)||parseDateVal(r.date);
+    const yr=d?d.getFullYear():(new Date()).getFullYear(), mo=d?d.getMonth():0;
+    const advertisingMD=numVal(r.advertisingpromotionsmd);
+    const advertising=numVal(r.advertisingpromotions);
+    const rnd_=numVal(r.rdexpenses);
+    const distributionCost=numVal(r.distributioncost);
+    const employeeRelated=numVal(r.employeerelated);
+    const donations=numVal(r.donations);
+    const administration=numVal(r.administration);
+    const sharedServices=numVal(r.sharedservices);
+    const financeCost=numVal(r.financecost);
+    const totalExpenses=advertisingMD+advertising+rnd_+distributionCost+employeeRelated+donations+administration+sharedServices+financeCost;
+    const badDebt=numVal(r.baddebt);
+    const inventoryAdj=numVal(r.inventory)||numVal(r.inventoryadjustment);
+    out.push({year:yr,month:mo,monthName:MONTHS[mo],advertisingMD,advertising,rnd:rnd_,distributionCost,employeeRelated,
+      donations,administration,sharedServices,financeCost,totalExpenses,badDebt,inventoryAdj,totalAdjustments:badDebt+inventoryAdj,
+      otherIncome:numVal(r.otherincome),corporateTaxPct:numVal(r.corporatetax)||numVal(r.corporatetaxpct)||0.25,
+      majorityInterest:numVal(r.majorityinterest)});
+  });
+  return out;
+}
+function buildRef(rawRows){
+  const out=[];
+  rawRows.forEach(r=>{
+    const d=parseDateVal(r.timeperiod)||parseDateVal(r.date);
+    const yr=d?d.getFullYear():(new Date()).getFullYear(), mo=d?d.getMonth():0;
+    out.push({year:yr,month:mo,monthName:MONTHS[mo],
+      employees:numVal(r.noofemployees||r.employees),
+      manuPersons:numVal(r.noofmanupersons||r.manupersons),
+      distributors:numVal(r.noofdistributors||r.distributors),
+      ssQty:numVal(r.ssqty),ledQty:numVal(r.ledqty),lvsQty:numVal(r.lvsqty),
+      complaints:numVal(r.noofcustomercomplaints||r.complaints)});
+  });
+  return out;
+}
+function wireUpload(inputId, statusId, msgId, builder, applyFn, sourceKey){
+  document.getElementById(inputId).addEventListener('change', async (e)=>{
+    const file=e.target.files[0]; if(!file) return;
+    const msg=document.getElementById(msgId);
+    try{
+      const buf=await file.arrayBuffer();
+      const wb=XLSX.read(buf,{type:'array'});
+      const rows=builder(rowsFromWorkbook(wb));
+      if(!rows.length){ msg.style.color='var(--red)'; msg.textContent='No usable rows found — check column headers.'; return; }
+      applyFn(rows);
+      sourceStatus[sourceKey]='connected';
+      const st=document.getElementById(statusId); st.textContent='Connected ('+rows.length+' rows)'; st.className='status connected';
+      msg.style.color='var(--green)'; msg.textContent='Loaded '+rows.length+' rows.';
+      refreshAllFilterOptions(); renderAllApex();
+    }catch(err){ console.error(err); msg.style.color='var(--red)'; msg.textContent='Could not parse file.'; }
+  });
+}
+wireUpload('uploadPrimary','statusPrimary','msgPrimary',buildPrimary,r=>primaryRows=r,'primary');
+wireUpload('uploadDebtor','statusDebtor','msgDebtor',buildDebtor,r=>debtorRows=r,'debtor');
+wireUpload('uploadInventory','statusInventory','msgInventory',buildInventory,r=>inventoryRows=r,'inventory');
+wireUpload('uploadSecondary','statusSecondary','msgSecondary',buildSecondary,r=>secondaryRows=r,'secondary');
+wireUpload('uploadCost','statusCost','msgCost',buildCost,r=>costRows=r,'cost');
+wireUpload('uploadExpense','statusExpense','msgExpense',buildExpense,r=>expenseRows=r,'expense');
+wireUpload('uploadRef','statusRef','msgRef',buildRef,r=>refRows=r,'ref');
+
+/* ---------------- filter state ---------------- */
+const state={year:'all',month:'all',main:'all',sub:'all',region:'all'};
+function filteredPrimary(){
+  return primaryRows.filter(r=>
+    (state.year==='all'||r.year===+state.year) &&
+    (state.month==='all'||r.month===+state.month) &&
+    (state.main==='all'||r.mainChannel===state.main) &&
+    (state.sub==='all'||r.subChannel===state.sub) &&
+    (state.region==='all'||r.region===state.region));
+}
+function filteredDebtor(){
+  return debtorRows.filter(r=>(state.year==='all'||r.year===+state.year)&&(state.month==='all'||r.month===+state.month));
+}
+function filteredInventory(){
+  return inventoryRows.filter(r=>(state.year==='all'||r.year===+state.year)&&(state.month==='all'||r.month===+state.month));
+}
+function filteredSecondary(){
+  return secondaryRows.filter(r=>(state.year==='all'||r.year===+state.year)&&(state.month==='all'||r.month===+state.month)&&
+    (state.region==='all'||r.region===state.region));
+}
+function filteredCost(){
+  return costRows.filter(r=>(state.year==='all'||r.year===+state.year)&&(state.month==='all'||r.month===+state.month));
+}
+function filteredExpense(){
+  return expenseRows.filter(r=>(state.year==='all'||r.year===+state.year)&&(state.month==='all'||r.month===+state.month));
+}
+function filteredRef(){
+  return refRows.filter(r=>(state.year==='all'||r.year===+state.year)&&(state.month==='all'||r.month===+state.month));
+}
+function scopeMonthsCount(){ return state.month!=='all'?1:12; }
+function scopeYearsCount(){
+  if(state.year!=='all') return 1;
+  const ys=[...new Set(primaryRows.map(r=>r.year))];
+  return ys.length||1;
+}
+function periodCount(){ return scopeMonthsCount()*scopeYearsCount(); }
+function avgOf(rows,key){ return rows.length? sum(rows,key)/rows.length : 0; }
+
+/* ---------------- filter dropdowns ---------------- */
+const fYear=document.getElementById('fYear'),fMonth=document.getElementById('fMonth'),
+      fMain=document.getElementById('fMain'),fSub=document.getElementById('fSub'),fRegion=document.getElementById('fRegion');
+function refreshAllFilterOptions(){
+  const years=[...new Set(primaryRows.map(r=>r.year))].sort();
+  fYear.innerHTML='<option value="all">All Years</option>'+years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  fMonth.innerHTML='<option value="all">All Months</option>'+MONTHS.map((m,i)=>`<option value="${i}">${m}</option>`).join('');
+  const mains=[...new Set(primaryRows.map(r=>r.mainChannel))];
+  fMain.innerHTML='<option value="all">All Main Channels</option>'+mains.map(m=>`<option value="${m}">${m}</option>`).join('');
+  const regions=[...new Set(primaryRows.map(r=>r.region))];
+  fRegion.innerHTML='<option value="all">All Regions</option>'+regions.map(r=>`<option value="${r}">${r}</option>`).join('');
+  refreshSubOptions();
+}
+function refreshSubOptions(){
+  const pool = state.main==='all' ? primaryRows : primaryRows.filter(r=>r.mainChannel===state.main);
+  const subs=[...new Set(pool.map(r=>r.subChannel))];
+  fSub.innerHTML='<option value="all">All Sub Channels</option>'+subs.map(s=>`<option value="${s}">${s}</option>`).join('');
+  state.sub='all';
+}
+refreshAllFilterOptions();
+[['fYear','year'],['fMonth','month'],['fMain','main'],['fSub','sub'],['fRegion','region']].forEach(([id,key])=>{
+  document.getElementById(id).addEventListener('change',e=>{
+    state[key]=e.target.value;
+    if(key==='main') refreshSubOptions();
+    renderAllApex();
+  });
+});
+document.getElementById('resetFilters').addEventListener('click',()=>{
+  state.year='all';state.month='all';state.main='all';state.sub='all';state.region='all';
+  fYear.value='all';fMonth.value='all';fMain.value='all';fRegion.value='all'; refreshSubOptions();
+  renderAllApex();
+});
+
+/* ---------------- KPI computation ---------------- */
+function computeKPIs(){
+  const p=filteredPrimary();
+  const salesValue=sum(p,'salesValue'), profit=sum(p,'profit'), qty=sum(p,'qty');
+  const gpPct = salesValue?profit/salesValue:0;
+
+  const s=filteredSecondary();
+  const secSales=sum(s.filter(r=>r.typeTxn==='Sales'),'netValue');
+  const secReturns=sum(s.filter(r=>r.typeTxn==='Return'),'netValue');
+
+  const d=filteredDebtor();
+  const totalDebtors=sum(d,'total');
+  const over60=sum(d,r=>r.b61_90+r.b91_120+r.b121_180+r.b181_360+r.b361plus);
+  const over60Pct=totalDebtors?over60/totalDebtors:0;
+  const monthsCount = state.month!=='all'?1:12;
+  const yearsCount = state.year!=='all'?1:YEARS.length;
+  const periodDays = monthsCount*yearsCount*30;
+  const dcpDays = salesValue? (totalDebtors/salesValue)*periodDays/(yearsCount*monthsCount||1) : 0;
+
+  const inv=filteredInventory();
+  const totalStock=sum(inv,'totalValue');
+  const over90Stock=sum(inv,'over90');
+  const over90Pct=totalStock?over90Stock/totalStock:0;
+
+  return {salesValue,profit,qty,gpPct,secSales,secReturns,totalDebtors,over60Pct,dcpDays,totalStock,over90Pct};
+}
+
+function kpiCardHTML(label,val,sub,flag){
+  return `<div class="kpi-card"><div class="kpi-label">${label}</div><div class="kpi-val">${val}</div>
+    ${sub?`<div class="kpi-sub">${sub}</div>`:''}${flag?`<div class="kpi-flag">${flag}</div>`:''}</div>`;
+}
+function renderKPIs(){
+  const k=computeKPIs();
+  const html=[
+    kpiCardHTML('Primary Sales Value',money(k.salesValue),k.qty.toLocaleString()+' units'),
+    kpiCardHTML('Gross Profit %',pct(k.gpPct),money(k.profit)+' profit'),
+    kpiCardHTML('Secondary Sales (Net)',money(k.secSales),'Returns: '+money(k.secReturns)),
+    kpiCardHTML('Over 60 Days Debtors %',pct(k.over60Pct),'of '+money(k.totalDebtors)+' total', sourceStatus.debtor==='dummy'?'Dummy source':null),
+    kpiCardHTML('Over 90 Days Stock %',pct(k.over90Pct),'of '+money(k.totalStock)+' total', sourceStatus.inventory==='dummy'?'Dummy source':null),
+    kpiCardHTML('Avg Debtor Collection Period',k.dcpDays.toFixed(0)+' days','Estimated from debtors ÷ sales')
+  ];
+  document.getElementById('kpiGrid').innerHTML=html.join('');
+}
+
+/* ---------------- full P&L / KPI suite (Manufacturing.xlsx logic) ---------------- */
+function mRow(label,val,opts){
+  opts=opts||{};
+  return `<div class="metric-row${opts.total?' total':''}"><span class="m-label">${label}</span>
+    <span class="m-val">${val}${opts.est?'<span class="dot-est" title="Estimated from dummy data"></span>':''}</span></div>`;
+}
+function computeFullPnL(){
+  const p=filteredPrimary(), s=filteredSecondary(), d=filteredDebtor(), inv=filteredInventory(),
+        c=filteredCost(), e=filteredExpense(), r=filteredRef();
+  const days=periodCount()*30;
+
+  const primarySale=sum(p,'salesValue');
+  const rdSale=sum(s.filter(x=>x.typeTxn==='Sales'),'netValue');
+  const gpLineProfit=sum(p,'profit');
+
+  const totalCOS=sum(c,'totalCOS');
+  const materialCost=sum(c,'materialCost');
+  const gpBeforeCR=primarySale-totalCOS;
+  const gpBeforeCRPct=primarySale?gpBeforeCR/primarySale:0;
+
+  const focCost=sum(c,'foc');
+  const totalCustRelated=focCost;
+  const custRelatedPct=primarySale?totalCustRelated/primarySale:0;
+  const gpAfterCR=gpBeforeCR-totalCustRelated;
+  const gpAfterCRPct=primarySale?gpAfterCR/primarySale:0;
+
+  const totalExpenses=sum(e,'totalExpenses');
+  const totalAdjustments=sum(e,'totalAdjustments');
+  const otherIncome=sum(e,'otherIncome');
+  const npbt=gpAfterCR+otherIncome-totalExpenses-totalAdjustments;
+  const avgTaxPct=e.length?avgOf(e,'corporateTaxPct'):0.25;
+  const corporateTax=Math.max(0,npbt)*avgTaxPct;
+  const majorityInterest=sum(e,'majorityInterest');
+  const npat=npbt-corporateTax-majorityInterest;
+  const npatPct=primarySale?npat/primarySale:0;
+
+  const totalDebtors=sum(d,'total');
+  const avgDebtors=avgOf(d,'total')* (d.length?1:1);
+  const over60Debtors=sum(d,r2=>r2.b61_90+r2.b91_120+r2.b121_180+r2.b181_360+r2.b361plus);
+  const over60DebtorsPct=totalDebtors?over60Debtors/totalDebtors:0;
+  const avgDCP=primarySale?(sum(d,'total')/(d.length||1))/(primarySale/(p.length||1)||1)*30:0;
+
+  const totalStock=sum(inv,'totalValue');
+  const avgStock=avgOf(inv,'totalValue');
+  const over90Stock=sum(inv,'over90');
+  const over90StockPct=totalStock?over90Stock/totalStock:0;
+  const avgStockHoldingDays=totalCOS?(avgStock/(totalCOS/(c.length||1)||1))*30:0;
+
+  const avgCreditors=avgOf(c,'creditorBalance');
+  const avgSettlementDays=materialCost?(avgCreditors/(materialCost/(c.length||1)||1))*30:0;
+  const over60CreditorsPct=avgOf(c,'over60CreditorsPct');
+
+  const employees=avgOf(r,'employees')||1;
+  const manuPersons=avgOf(r,'manuPersons')||1;
+  const distributors=avgOf(r,'distributors')||1;
+  const rdSalePerHead=rdSale/employees;
+  const primarySalePerHead=primarySale/manuPersons;
+  const gpPerHead=gpBeforeCR/employees;
+  const empRelatedPerHead=sum(e,'employeeRelated')/employees;
+  const npPerHead=npat/employees;
+  const rdSalePerDistributor=rdSale/distributors;
+  const primarySalePerDistributor=primarySale/distributors;
+  const eva=npat*0.6;
+
+  return {primarySale,rdSale,gpLineProfit,materialCost,totalCOS,gpBeforeCR,gpBeforeCRPct,focCost,totalCustRelated,
+    custRelatedPct,gpAfterCR,gpAfterCRPct,totalExpenses,totalAdjustments,otherIncome,npbt,corporateTax,avgTaxPct,
+    majorityInterest,npat,npatPct,totalDebtors,over60Debtors,over60DebtorsPct,avgDCP,totalStock,avgStock,over90Stock,
+    over90StockPct,avgStockHoldingDays,avgCreditors,avgSettlementDays,over60CreditorsPct,employees,manuPersons,
+    distributors,rdSalePerHead,primarySalePerHead,gpPerHead,empRelatedPerHead,npPerHead,rdSalePerDistributor,
+    primarySalePerDistributor,eva,
+    ssQty:sum(r,'ssQty'),ledQty:sum(r,'ledQty'),lvsQty:sum(r,'lvsQty'),complaints:sum(r,'complaints'),
+    damageGood:sum(filteredCost(),'damageGood'),labour:sum(filteredCost(),'labour'),labourAbsorb:sum(filteredCost(),'labourAbsorb'),
+    electricity:sum(filteredCost(),'electricity'),buildingMaintain:sum(filteredCost(),'buildingMaintain'),
+    consumables:sum(filteredCost(),'consumables'),machineryToolMaint:sum(filteredCost(),'machineryToolMaint'),
+    ohOtherLabour:sum(filteredCost(),'ohOtherLabour'),ohOtherMachine:sum(filteredCost(),'ohOtherMachine'),
+    totalOH:sum(filteredCost(),'totalOH'),ohAbsorb:sum(filteredCost(),'ohAbsorb'),machine:sum(filteredCost(),'machine'),
+    machineAbsorb:sum(filteredCost(),'machineAbsorb'),royalty:sum(filteredCost(),'royalty'),
+    advertisingMD:sum(e,'advertisingMD'),advertising:sum(e,'advertising'),rndExp:sum(e,'rnd'),
+    distributionCost:sum(e,'distributionCost'),employeeRelated:sum(e,'employeeRelated'),donations:sum(e,'donations'),
+    administration:sum(e,'administration'),sharedServices:sum(e,'sharedServices'),financeCost:sum(e,'financeCost'),
+    badDebt:sum(e,'badDebt'),inventoryAdj:sum(e,'inventoryAdj')};
+}
+function renderPnLSuite(){
+  const k=computeFullPnL();
+  const estD = sourceStatus.debtor==='dummy', estI = sourceStatus.inventory==='dummy',
+        estC = sourceStatus.cost==='dummy', estE = sourceStatus.expense==='dummy', estR = sourceStatus.ref==='dummy';
+
+  const cardPnL=`<div class="card c-6"><h3>P&amp;L Waterfall</h3><p class="hint">Primary Sale → Net Profit After Tax</p><div class="metric-list">
+    ${mRow('RD Sale (Secondary/Redistribution)',money(k.rdSale))}
+    ${mRow('Primary Sale (Without Tax)',money(k.primarySale))}
+    ${mRow('Total Cost of Sales',money(k.totalCOS),{est:estC})}
+    ${mRow('Gross Profit Before Customer Related',money(k.gpBeforeCR),{est:estC})}
+    ${mRow('GP % (Before CR)',pct(k.gpBeforeCRPct),{est:estC})}
+    ${mRow('Total Customer Related Expenses (FOC)',money(k.totalCustRelated),{est:estC})}
+    ${mRow('% On Sale',pct(k.custRelatedPct),{est:estC})}
+    ${mRow('Gross Profit After Customer Related',money(k.gpAfterCR),{est:estC})}
+    ${mRow('GP % (After CR)',pct(k.gpAfterCRPct),{est:estC})}
+    ${mRow('Other Income',money(k.otherIncome),{est:estE})}
+    ${mRow('Total Expenses',money(k.totalExpenses),{est:estE})}
+    ${mRow('Total Adjustments (Bad Debt + Inventory)',money(k.totalAdjustments),{est:estE})}
+    ${mRow('Net Profit Before Tax',money(k.npbt),{est:estC||estE,total:true})}
+    ${mRow('Corporate Tax ('+pct(k.avgTaxPct)+')',money(k.corporateTax),{est:estE})}
+    ${mRow('Majority Interest',money(k.majorityInterest),{est:estE})}
+    ${mRow('Net Profit After Tax',money(k.npat),{est:estC||estE,total:true})}
+    ${mRow('NPAT %',pct(k.npatPct),{est:estC||estE})}
+  </div></div>`;
+
+  const cardWC=`<div class="card c-6"><h3>Working Capital</h3><p class="hint">Debtors, Stock &amp; Creditors — company-wide, Year/Month filter only</p><div class="metric-list">
+    ${mRow('Avg. Debtors',money(k.totalDebtors),{est:estD})}
+    ${mRow('Avg. Debt Collection Period',k.avgDCP.toFixed(0)+' days',{est:estD})}
+    ${mRow('Over 60 Days Debtors',money(k.over60Debtors),{est:estD})}
+    ${mRow('Over 60 Days Debtors %',pct(k.over60DebtorsPct),{est:estD})}
+    ${mRow('Avg. Stocks',money(k.avgStock),{est:estI})}
+    ${mRow('Avg. Stock Holding Period',k.avgStockHoldingDays.toFixed(0)+' days',{est:estI||estC})}
+    ${mRow('Over 90 Days Stocks',money(k.over90Stock),{est:estI})}
+    ${mRow('Over 90 Days Stocks %',pct(k.over90StockPct),{est:estI})}
+    ${mRow('Avg. Creditors',money(k.avgCreditors),{est:estC})}
+    ${mRow('Avg. Settlement Period',k.avgSettlementDays.toFixed(0)+' days',{est:estC})}
+    ${mRow('Over 60 Days Creditors %',pct(k.over60CreditorsPct),{est:estC})}
+  </div></div>`;
+
+  const cardProd=`<div class="card c-6"><h3>Productivity &amp; Per-Head</h3><p class="hint">Headcount and distributor efficiency</p><div class="metric-list">
+    ${mRow("No. of Employee's",Math.round(k.employees).toLocaleString(),{est:estR})}
+    ${mRow('No. of Manu Persons',Math.round(k.manuPersons).toLocaleString(),{est:estR})}
+    ${mRow('No. of Distributors',Math.round(k.distributors).toLocaleString(),{est:estR})}
+    ${mRow('RD Sale per Head',money(k.rdSalePerHead),{est:estR})}
+    ${mRow('Primary (Manu) Sale per Head',money(k.primarySalePerHead),{est:estR})}
+    ${mRow('GP per Head',money(k.gpPerHead),{est:estR||estC})}
+    ${mRow('Employee Related per Head',money(k.empRelatedPerHead),{est:estR||estE})}
+    ${mRow('NP per Head',money(k.npPerHead),{est:estR||estC||estE})}
+    ${mRow('RD Sale per Distributor',money(k.rdSalePerDistributor),{est:estR})}
+    ${mRow('Primary Sale per Distributor',money(k.primarySalePerDistributor),{est:estR})}
+    ${mRow('EVA',money(k.eva),{est:true,total:true})}
+  </div></div>`;
+
+  const cardCOS=`<div class="card c-6"><h3>Cost of Sales Breakdown</h3><p class="hint">As % of Primary Sale</p><div class="metric-list">
+    ${mRow('Material Cost',money(k.materialCost)+' · '+pct(k.materialCost/(k.primarySale||1)),{est:estC})}
+    ${mRow('Damage Goods / COS',pct(k.damageGood/(k.totalCOS||1)),{est:estC})}
+    ${mRow('Labour',money(k.labour)+' · '+pct(k.labour/(k.primarySale||1)),{est:estC})}
+    ${mRow('Labour Absorb Variance',money(k.labourAbsorb-k.labour),{est:estC})}
+    ${mRow('Electricity',pct(k.electricity/(k.primarySale||1)),{est:estC})}
+    ${mRow('Building Maintain',pct(k.buildingMaintain/(k.primarySale||1)),{est:estC})}
+    ${mRow('Consumables',pct(k.consumables/(k.primarySale||1)),{est:estC})}
+    ${mRow('Machinery &amp; Tool Maintenance',pct(k.machineryToolMaint/(k.primarySale||1)),{est:estC})}
+    ${mRow('Overhead – Other Labour',pct(k.ohOtherLabour/(k.primarySale||1)),{est:estC})}
+    ${mRow('Overhead – Other Machine',pct(k.ohOtherMachine/(k.primarySale||1)),{est:estC})}
+    ${mRow('Total OH',money(k.totalOH)+' · '+pct(k.totalOH/(k.primarySale||1)),{est:estC})}
+    ${mRow('Total OH Absorb Variance',money(k.ohAbsorb-k.totalOH),{est:estC})}
+    ${mRow('Machine',money(k.machine)+' · '+pct(k.machine/(k.primarySale||1)),{est:estC})}
+    ${mRow('Machine Absorb Variance',money(k.machineAbsorb-k.machine),{est:estC})}
+    ${mRow('Royalty',pct(k.royalty/(k.primarySale||1)),{est:estC})}
+    ${mRow('Total COS / Sale',pct(k.totalCOS/(k.primarySale||1)),{est:estC,total:true})}
+  </div></div>`;
+
+  const cardExp=`<div class="card c-6"><h3>Expenses Breakdown</h3><p class="hint">Below-the-line P&amp;L expenses</p><div class="metric-list">
+    ${mRow('Advertising & Promotions (MD)',money(k.advertisingMD),{est:estE})}
+    ${mRow('Advertising & Promotions',money(k.advertising),{est:estE})}
+    ${mRow('R&D Expenses',money(k.rndExp)+' · '+pct(k.rndExp/(k.primarySale||1)),{est:estE})}
+    ${mRow('Distribution Cost',money(k.distributionCost),{est:estE})}
+    ${mRow('Employee Related',money(k.employeeRelated),{est:estE})}
+    ${mRow('Donations',money(k.donations),{est:estE})}
+    ${mRow('Administration',money(k.administration),{est:estE})}
+    ${mRow('Shared Services',money(k.sharedServices),{est:estE})}
+    ${mRow('Finance Cost',money(k.financeCost),{est:estE})}
+    ${mRow('Total Expenses',money(k.totalExpenses)+' · '+pct(k.totalExpenses/(k.primarySale||1)),{est:estE,total:true})}
+    ${mRow('Bad Debt',money(k.badDebt),{est:estE})}
+    ${mRow('Inventory Adjustment',money(k.inventoryAdj),{est:estE})}
+    ${mRow('Total Adjustments',money(k.totalAdjustments)+' · '+pct(k.totalAdjustments/(k.primarySale||1)),{est:estE,total:true})}
+  </div></div>`;
+
+  const cardNew=`<div class="card c-6"><h3>New KPIs &amp; Quality</h3><p class="hint">Quantities and service-quality tracking</p><div class="metric-list">
+    ${mRow('SS Quantity',k.ssQty.toLocaleString(),{est:estR})}
+    ${mRow('LED Quantity',k.ledQty.toLocaleString(),{est:estR})}
+    ${mRow('LVS Quantity',k.lvsQty.toLocaleString(),{est:estR})}
+    ${mRow('No. of Customer Complaints',k.complaints.toLocaleString(),{est:estR})}
+  </div></div>`;
+
+  document.getElementById('pnlGrid').innerHTML=cardPnL+cardWC+cardProd+cardCOS+cardExp+cardNew;
+}
+
+/* ---------------- charts ---------------- */
+let charts={};
+function killChart(k){ if(charts[k]){ charts[k].destroy(); delete charts[k]; } }
+
+// Helper to create vertical linear gradients in canvas charts
+function getCanvasGrad(canvasId, startColor, endColor) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return startColor;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return startColor;
+  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height || 270);
+  grad.addColorStop(0, startColor);
+  grad.addColorStop(1, endColor);
+  return grad;
+}
+
+function renderTrend(){
+  killChart('trend'); const C=colors(); const rows=filteredPrimary();
+  const key=r=>r.year*12+r.month;
+  const keys=[...new Set(rows.map(key))].sort((a,b)=>a-b);
+  const labels=keys.map(k=>MONTHS[k%12]+" '"+String(Math.floor(k/12)).slice(-2));
+  const sales=keys.map(k=>sum(rows.filter(r=>key(r)===k),'salesValue'));
+  const profit=keys.map(k=>sum(rows.filter(r=>key(r)===k),'profit'));
+  
+  const salesGrad = getCanvasGrad('chartTrend', 'rgba(47, 111, 237, 0.85)', 'rgba(47, 111, 237, 0.15)');
+  const profitGrad = getCanvasGrad('chartTrend', 'rgba(245, 158, 11, 0.25)', 'rgba(245, 158, 11, 0)');
+  
+  charts.trend=new Chart(document.getElementById('chartTrend'),{
+    data:{labels,datasets:[
+      {type:'bar',label:'Sales Value',data:sales,backgroundColor:salesGrad,borderRadius:6,yAxisID:'y',maxBarThickness:28},
+      {type:'line',label:'Profit',data:profit,borderColor:C.amber,backgroundColor:profitGrad,fill:true,yAxisID:'y1',tension:.4,pointRadius:3,pointHoverRadius:6,borderWidth:2.5}
+    ]},options:{responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'bottom',labels:{color:C.text,font:{family:"'Inter', sans-serif", weight:600},boxWidth:10,usePointStyle:true}},
+        tooltip:{padding:12,backgroundColor:'rgba(15, 23, 42, 0.9)',titleFont:{family:"'Inter', sans-serif", weight:700},bodyFont:{family:"'Inter', sans-serif"},cornerRadius:8,callbacks:{label:c=>' ' + c.dataset.label + ': ' + money(c.raw)}}
+      },
+      scales:{
+        x:{ticks:{color:C.sub,maxRotation:0},grid:{display:false}},
+        y:{position:'left',ticks:{color:C.sub,callback:v=>money(v)},grid:{color:C.border,borderDash:[4,4],drawTicks:false}},
+        y1:{position:'right',ticks:{color:C.sub,callback:v=>money(v)},grid:{display:false}}
+      }
+    }
+  });
+}
+function renderMainDonut(){
+  killChart('mainDonut'); const C=colors(); const rows=filteredPrimary();
+  const mains=[...new Set(rows.map(r=>r.mainChannel))];
+  const vals=mains.map(m=>sum(rows.filter(r=>r.mainChannel===m),'salesValue'));
+  charts.mainDonut=new Chart(document.getElementById('chartMainDonut'),{type:'doughnut',
+    data:{labels:mains,datasets:[{data:vals,backgroundColor:PALETTE,borderWidth:0,hoverOffset:8,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'68%',
+      plugins:{
+        legend:{position:'bottom',labels:{color:C.text,boxWidth:10,usePointStyle:true,font:{size:11, family:"'Inter', sans-serif", weight:600}}},
+        tooltip:{padding:12,backgroundColor:'rgba(15, 23, 42, 0.9)',titleFont:{family:"'Inter', sans-serif", weight:700},bodyFont:{family:"'Inter', sans-serif"},cornerRadius:8,callbacks:{label:c=>' ' + c.label+': '+money(c.raw)}}
+      }
+    }
+  });
+}
+function renderSubBar(){
+  killChart('subBar'); const C=colors(); const rows=filteredPrimary();
+  const subs=[...new Set(rows.map(r=>r.subChannel))];
+  const vals=subs.map(s=>sum(rows.filter(r=>r.subChannel===s),'salesValue'));
+  
+  const barGrad = getCanvasGrad('chartSubBar', 'rgba(47, 111, 237, 0.85)', 'rgba(124, 92, 252, 0.25)');
+  
+  charts.subBar=new Chart(document.getElementById('chartSubBar'),{type:'bar',
+    data:{labels:subs,datasets:[{data:vals,backgroundColor:barGrad,borderRadius:6,maxBarThickness:35}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{padding:12,backgroundColor:'rgba(15, 23, 42, 0.9)',titleFont:{family:"'Inter', sans-serif", weight:700},bodyFont:{family:"'Inter', sans-serif"},cornerRadius:8,callbacks:{label:c=>' Sales: ' + money(c.raw)}}
+      },
+      scales:{
+        x:{ticks:{color:C.sub,maxRotation:20,minRotation:0,font:{size:10, weight:600}},grid:{display:false}},
+        y:{ticks:{color:C.sub,callback:v=>money(v)},grid:{color:C.border,borderDash:[4,4],drawTicks:false}}
+      }
+    }
+  });
+}
+function renderRegionBar(){
+  killChart('regionBar'); const C=colors(); const rows=filteredPrimary();
+  const regions=[...new Set(rows.map(r=>r.region))];
+  const vals=regions.map(r=>sum(rows.filter(x=>x.region===r),'salesValue'));
+  
+  const barGrad = getCanvasGrad('chartRegionBar', 'rgba(124, 92, 252, 0.85)', 'rgba(124, 92, 252, 0.2)');
+  
+  charts.regionBar=new Chart(document.getElementById('chartRegionBar'),{type:'bar',
+    data:{labels:regions,datasets:[{data:vals,backgroundColor:barGrad,borderRadius:6,maxBarThickness:40}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{padding:12,backgroundColor:'rgba(15, 23, 42, 0.9)',titleFont:{family:"'Inter', sans-serif", weight:700},bodyFont:{family:"'Inter', sans-serif"},cornerRadius:8,callbacks:{label:c=>' Sales: ' + money(c.raw)}}
+      },
+      scales:{
+        x:{ticks:{color:C.sub,font:{weight:600}},grid:{display:false}},
+        y:{ticks:{color:C.sub,callback:v=>money(v)},grid:{color:C.border,borderDash:[4,4],drawTicks:false}}
+      }
+    }
+  });
+}
+function renderDebtorAge(){
+  killChart('debtorAge'); const C=colors(); const rows=filteredDebtor();
+  const buckets=[['0-30',r=>r.b0_30],['31-60',r=>r.b31_60],['61-90',r=>r.b61_90],['91-120',r=>r.b91_120],
+    ['121-180',r=>r.b121_180],['181-360',r=>r.b181_360],['361+',r=>r.b361plus]];
+  const labels=buckets.map(b=>b[0]);
+  const vals=buckets.map(b=>sum(rows,b[1]));
+  
+  const greenGrad = getCanvasGrad('chartDebtorAge', 'rgba(22, 163, 74, 0.85)', 'rgba(22, 163, 74, 0.25)');
+  const amberGrad = getCanvasGrad('chartDebtorAge', 'rgba(245, 158, 11, 0.85)', 'rgba(245, 158, 11, 0.25)');
+  const redGrad = getCanvasGrad('chartDebtorAge', 'rgba(239, 68, 68, 0.85)', 'rgba(239, 68, 68, 0.25)');
+  
+  const colorsArr = labels.map((_,i)=>i>=2 ? redGrad : (i>=1 ? amberGrad : greenGrad));
+  
+  charts.debtorAge=new Chart(document.getElementById('chartDebtorAge'),{type:'bar',
+    data:{labels,datasets:[{data:vals,backgroundColor:colorsArr,borderRadius:6,maxBarThickness:35}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{padding:12,backgroundColor:'rgba(15, 23, 42, 0.9)',titleFont:{family:"'Inter', sans-serif", weight:700},bodyFont:{family:"'Inter', sans-serif"},cornerRadius:8,callbacks:{label:c=>' Debt: ' + money(c.raw)}}
+      },
+      scales:{
+        x:{ticks:{color:C.sub,font:{weight:600}},grid:{display:false}},
+        y:{ticks:{color:C.sub,callback:v=>money(v)},grid:{color:C.border,borderDash:[4,4],drawTicks:false}}
+      }
+    }
+  });
+}
+function renderStockAge(){
+  killChart('stockAge'); const C=colors(); const rows=filteredInventory();
+  const buckets=[['0-30',r=>r.b0_30],['30-60',r=>r.b30_60],['60-90',r=>r.b60_90],['Over 90',r=>r.over90]];
+  const labels=buckets.map(b=>b[0]);
+  const vals=buckets.map(b=>sum(rows,b[1]));
+  
+  const greenG = getCanvasGrad('chartStockAge', 'rgba(22, 163, 74, 0.85)', 'rgba(22, 163, 74, 0.25)');
+  const blueG = getCanvasGrad('chartStockAge', 'rgba(47, 111, 237, 0.85)', 'rgba(47, 111, 237, 0.25)');
+  const amberG = getCanvasGrad('chartStockAge', 'rgba(245, 158, 11, 0.85)', 'rgba(245, 158, 11, 0.25)');
+  const redG = getCanvasGrad('chartStockAge', 'rgba(239, 68, 68, 0.85)', 'rgba(239, 68, 68, 0.25)');
+  
+  charts.stockAge=new Chart(document.getElementById('chartStockAge'),{type:'bar',
+    data:{labels,datasets:[{data:vals,backgroundColor:[greenG,blueG,amberG,redG],borderRadius:6,maxBarThickness:45}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{padding:12,backgroundColor:'rgba(15, 23, 42, 0.9)',titleFont:{family:"'Inter', sans-serif", weight:700},bodyFont:{family:"'Inter', sans-serif"},cornerRadius:8,callbacks:{label:c=>' Stock: ' + money(c.raw)}}
+      },
+      scales:{
+        x:{ticks:{color:C.sub,font:{weight:600}},grid:{display:false}},
+        y:{ticks:{color:C.sub,callback:v=>money(v)},grid:{color:C.border,borderDash:[4,4],drawTicks:false}}
+      }
+    }
+  });
+}
+function renderSecTrend(){
+  killChart('secTrend'); const C=colors(); const rows=filteredSecondary();
+  const key=r=>r.year*12+r.month;
+  const keys=[...new Set(rows.map(key))].sort((a,b)=>a-b);
+  const labels=keys.map(k=>MONTHS[k%12]+" '"+String(Math.floor(k/12)).slice(-2));
+  const salesArr=keys.map(k=>sum(rows.filter(r=>key(r)===k&&r.typeTxn==='Sales'),'netValue'));
+  const retArr=keys.map(k=>sum(rows.filter(r=>key(r)===k&&r.typeTxn==='Return'),'netValue'));
+  
+  const salesG = getCanvasGrad('chartSecTrend', 'rgba(47, 111, 237, 0.85)', 'rgba(47, 111, 237, 0.15)');
+  const retG = getCanvasGrad('chartSecTrend', 'rgba(239, 68, 68, 0.85)', 'rgba(239, 68, 68, 0.15)');
+  
+  charts.secTrend=new Chart(document.getElementById('chartSecTrend'),{
+    data:{labels,datasets:[
+      {type:'bar',label:'Secondary Sales (Net)',data:salesArr,backgroundColor:salesG,borderRadius:6,maxBarThickness:15},
+      {type:'bar',label:'Returns',data:retArr,backgroundColor:retG,borderRadius:6,maxBarThickness:15}
+    ]},options:{responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'bottom',labels:{color:C.text,font:{family:"'Inter', sans-serif", weight:600},boxWidth:10,usePointStyle:true}},
+        tooltip:{padding:12,backgroundColor:'rgba(15, 23, 42, 0.9)',titleFont:{family:"'Inter', sans-serif", weight:700},bodyFont:{family:"'Inter', sans-serif"},cornerRadius:8}
+      },
+      scales:{
+        x:{ticks:{color:C.sub,maxRotation:0},grid:{display:false}},
+        y:{ticks:{color:C.sub,callback:v=>money(v)},grid:{color:C.border,borderDash:[4,4],drawTicks:false}}
+      }
+    }
+  });
+}
+function renderTopSku(){
+  killChart('topSku'); const C=colors(); const rows=filteredPrimary();
+  const skus=[...new Set(rows.map(r=>r.skuDesc))];
+  let agg=skus.map(s=>({s,val:sum(rows.filter(r=>r.skuDesc===s),'salesValue')})).sort((a,b)=>b.val-a.val).slice(0,8);
+  
+  const canvas = document.getElementById('chartTopSku');
+  let horizGrad = C.purple;
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      horizGrad = ctx.createLinearGradient(0, 0, canvas.width || 300, 0);
+      horizGrad.addColorStop(0, 'rgba(124, 92, 252, 0.85)');
+      horizGrad.addColorStop(1, 'rgba(124, 92, 252, 0.15)');
+    }
+  }
+  
+  charts.topSku=new Chart(document.getElementById('chartTopSku'),{type:'bar',
+    data:{labels:agg.map(a=>a.s.length>20?a.s.slice(0,20)+'…':a.s),datasets:[{data:agg.map(a=>a.val),backgroundColor:horizGrad,borderRadius:6,maxBarThickness:18}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{padding:12,backgroundColor:'rgba(15, 23, 42, 0.9)',titleFont:{family:"'Inter', sans-serif", weight:700},bodyFont:{family:"'Inter', sans-serif"},cornerRadius:8,callbacks:{label:c=>' Sales: ' + money(c.raw)}}
+      },
+      scales:{
+        x:{ticks:{color:C.sub,callback:v=>money(v)},grid:{color:C.border,borderDash:[4,4],drawTicks:false}},
+        y:{ticks:{color:C.sub,font:{size:10, weight:600}},grid:{display:false}}
+      }
+    }
+  });
+}
+
+/* ---------------- table ---------------- */
+let tblState={sortKey:'year',sortDir:-1,page:1,pageSize:10,search:''};
+function tableRows(){
+  let rows=filteredPrimary().slice();
+  if(tblState.search){
+    const s=tblState.search.toLowerCase();
+    rows=rows.filter(r=>[r.mainChannel,r.subChannel,r.region,r.skuDesc].join(' ').toLowerCase().includes(s));
+  }
+  rows.sort((a,b)=>{
+    let va=a[tblState.sortKey], vb=b[tblState.sortKey];
+    if(typeof va==='string') return va.localeCompare(vb)*tblState.sortDir;
+    return ((va||0)-(vb||0))*tblState.sortDir;
+  });
+  return rows;
+}
+function renderTable(){
+  const rows=tableRows();
+  const totalPages=Math.max(1,Math.ceil(rows.length/tblState.pageSize));
+  tblState.page=Math.min(tblState.page,totalPages);
+  const start=(tblState.page-1)*tblState.pageSize;
+  const page=rows.slice(start,start+tblState.pageSize);
+  document.getElementById('tblBody').innerHTML=page.map(r=>`
+    <tr><td>${r.year}</td><td class="txt">${r.monthName}</td>
+      <td class="txt">${r.mainChannel}</td><td class="txt">${r.subChannel}</td>
+      <td class="txt">${r.region}</td><td class="txt">${r.skuDesc}</td>
+      <td>${r.qty.toLocaleString()}</td><td>${money(r.salesValue)}</td><td>${money(r.profit)}</td></tr>`).join('');
+  document.getElementById('rowCount').textContent=rows.length+' records';
+  document.getElementById('pageInfo').textContent=`Page ${tblState.page} of ${totalPages}`;
+  document.getElementById('prevPage').disabled=tblState.page<=1;
+  document.getElementById('nextPage').disabled=tblState.page>=totalPages;
+}
+document.querySelectorAll('#dataTable thead th').forEach(th=>{
+  th.addEventListener('click',()=>{
+    const k=th.dataset.k;
+    if(tblState.sortKey===k) tblState.sortDir*=-1; else {tblState.sortKey=k; tblState.sortDir=1;}
+    renderTable();
+  });
+});
+document.getElementById('tblSearch').addEventListener('input',e=>{tblState.search=e.target.value;tblState.page=1;renderTable();});
+document.getElementById('prevPage').addEventListener('click',()=>{tblState.page--;renderTable();});
+document.getElementById('nextPage').addEventListener('click',()=>{tblState.page++;renderTable();});
+
+/* ---------------- export ---------------- */
+function exportRows(){
+  return tableRows().map(r=>({Year:r.year,Month:r.monthName,'Main Channel':r.mainChannel,'Sub Channel':r.subChannel,
+    Region:r.region,SKU:r.skuDesc,Qty:r.qty,'Sales Value':+r.salesValue.toFixed(2),Profit:+r.profit.toFixed(2)}));
+}
+document.getElementById('btnCsv').addEventListener('click',()=>{
+  const rows=exportRows(); if(!rows.length) return; const headers=Object.keys(rows[0]);
+  const csv=[headers.join(',')].concat(rows.map(r=>headers.map(h=>r[h]).join(','))).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='apex-kpi-export.csv'; a.click();
+});
+document.getElementById('btnXlsx').addEventListener('click',()=>{
+  const rows=exportRows(); if(!rows.length) return;
+  const ws=XLSX.utils.json_to_sheet(rows); const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'KPI Data'); XLSX.writeFile(wb,'apex-kpi-export.xlsx');
+});
+document.getElementById('btnPrint').addEventListener('click',()=>window.print());
+
+/* ---------------- render all ---------------- */
+window.renderAllApex=function(){
+  renderKPIs(); renderTrend(); renderMainDonut(); renderSubBar(); renderRegionBar();
+  renderDebtorAge(); renderStockAge(); renderSecTrend(); renderTopSku(); renderTable();
+};
+renderAllApex();
+};
+</script>
+</body>
+</html>
